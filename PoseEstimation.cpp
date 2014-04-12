@@ -30,7 +30,42 @@ The 3D pose estimation steps are as follow:
 
 #include "PoseEstimation.h"
 
+#define	PI	3.14159265358979323846
+
 // TCP/IP Port to use: 50058
+
+Mat RotationMatrix(unsigned char axis, double angle)
+{
+	if (axis == 'x')
+	{
+		return	(Mat_<double>(4,4) <<	1.0,			0.0,			0.0,			0.0,
+										0.0,			cos(angle),		-sin(angle),	0.0,
+										0.0,			sin(angle),		cos(angle),		0.0,
+										0.0,			0.0,			0.0,			1.0);
+	}
+	else if (axis == 'y')
+	{
+		return	(Mat_<double>(4,4) <<	cos(angle),		0.0,			sin(angle),		0.0,
+										0.0,			1.0,			0.0,			0.0,
+										-sin(angle),	0.0,			cos(angle),		0.0,
+										0.0,			0.0,			0.0,			1.0);
+	}
+	else if (axis == 'z')
+	{
+		return	(Mat_<double>(4,4) <<	cos(angle),		-sin(angle),	0.0,			0.0,
+										sin(angle),		cos(angle),		0.0,			0.0,
+										0.0,			0.0,			1.0,			0.0,
+										0.0,			0.0,			0.0,			1.0);
+	}
+}
+
+Mat TranslationMatrix(double tx, double ty, double tz)
+{
+	return	(Mat_<double>(4,4) <<	1.0,			0.0,			0.0,			tx,
+									0.0,			1.0,			0.0,			ty,
+									0.0,			0.0,			1.0,			tz,
+									0.0,			0.0,			0.0,			1.0);
+}
 
 void CalcBoardCornerPositions(vector<Point3f>& corner_object_points, Size board_size/*=Size(3, 4)*/, float square_size/*=13.67(in millimeter)*/)
 {
@@ -63,8 +98,14 @@ bool GetPose(Mat& undist_in_img, Mat& transfvec12, Mat& rvec, Mat& tvec, vector<
 
 	bool			found;
 	
-	// Rotation Matrix and Overall Transformation Matrix:
-	Mat				rmat, transfmat;
+	// Rotation Matrix:
+	Mat				rmat;
+	
+	// Overall Transformation Matrices:
+	Mat				transfmatCam;					// Overall Transformation Matrix (3X4) in reference to Camera Coordinate System
+	Mat				transfmatCamHomogeneous;		// Overall Homogeneous Transformation Matrix (4X4) in reference to Camera Coordinate System
+	Mat				transfmatSBHomogeneous;			// Overall Homogeneous Transformation Matrix (4X4) in reference to SuperBot's End-Effector Coordinate System
+	Mat				transfmatSB;					// Overall Transformation Matrix (3X4) in reference to SuperBot's End-Effector Coordinate System
 
 	// Images:
 	Mat				undist_in_img_gray;
@@ -91,11 +132,21 @@ bool GetPose(Mat& undist_in_img, Mat& transfvec12, Mat& rvec, Mat& tvec, vector<
 			cout<<"tvec = "<<tvec<<endl;
 		}
 		// Combine Rotation Matrix (rmat) and Translation Vector (tvec) into the overall transformation matrix
-		// (transfmat, size 3-by-4 matrix), that is [rmat|tvec]:
-		hconcat(rmat, tvec, transfmat);
+		// in reference to Camera coordinate system (transfmatCam, size 3-by-4 matrix), that is [rmat|tvec]:
+		hconcat(rmat, tvec, transfmatCam);
+		// Convert transfmatCam into transfmatSB (overall transformation matrix in reference 
+		// to SuperBot's End-Effector coordinate system):
+		Mat temp				= (Mat_<double>(1,4) <<	0.0, 0.0, 0.0, 1.0);
+		vconcat(transfmatCam, temp, transfmatCamHomogeneous);
+		Mat Rx					= RotationMatrix('x', -(PI/2));
+		Mat Ry					= RotationMatrix('y', (PI/2));
+		Mat T1					= TranslationMatrix(400.0, 700.0, 0.0);
+		transfmatSBHomogeneous	= T1 * Ry * Rx * transfmatCamHomogeneous;
+		transfmatSB				= transfmatSBHomogeneous(Rect(0, 0, 4, 3));
+		//cout<<"transfmatSB = "<<transfmatSB<<endl;
 		// Final transfmat re-shaping to satisfy requirements of manipulator program:
-		transpose(transfmat, transfvec12);
-		transfvec12	= transfvec12.reshape(12, 1);
+		transpose(transfmatSB, transfvec12);
+		transfvec12				= transfvec12.reshape(12, 1);
 	}
 	else		// If NOT found,
 	{
@@ -139,30 +190,6 @@ void DrawObjCoordFrame(Mat& undist_in_img, Mat rvec, Mat tvec, Mat camera_matrix
 	coord_frame_object_points.push_back(OBJ_COORD_X);
 	coord_frame_object_points.push_back(OBJ_COORD_Y);
 	coord_frame_object_points.push_back(OBJ_COORD_Z);
-
-	/*Mat				temp_vec1, temp_vec2, temp_vec3;
-	Mat				rmat, transfmat;
-
-	transfmat		= transfvec12.reshape(3, 4);
-
-	// Here we want to get back Rotation Vector (rvec) and Translation Vector (tvec) from transfmat ([rmat|tmat]^T) Matrix,
-	// for the purpose of drawing the coordinate frame of the chessboard pattern's plane. But something strange happened here.
-	// The OpenCV function transpose(src, dst) and src.t() (both are for transposing a matrix/ src Mat) did not work properly
-	// or as it should be (tested using OpenCV 2.3.1). So I used the following trick to come around this problem:
-	transfmat.row(0).copyTo(temp_vec1);
-	temp_vec1		= temp_vec1.reshape(1, 3);
-	transfmat.row(1).copyTo(temp_vec2);
-	temp_vec2		= temp_vec2.reshape(1, 3);
-	transfmat.row(2).copyTo(temp_vec3);
-	temp_vec3		= temp_vec3.reshape(1, 3);
-	hconcat(temp_vec1, temp_vec2, rmat);
-	hconcat(rmat, temp_vec3, rmat);
-	// Compute Rotation Vector (rvec, size 3-by-1 matrix) from Rotation Matrix (rmat, size 3-by-3 matrix) using Rodrigues transform
-	// (http://docs.opencv.org/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html#rodrigues):
-	Rodrigues(rmat, rvec);
-
-	transfmat.row(3).copyTo(tvec);
-	tvec			= tvec.reshape(1, 3);*/
 
 	//cout<<"rmat = "<<rmat<<endl;
 	//cout<<"rvec = "<<rvec<<endl;

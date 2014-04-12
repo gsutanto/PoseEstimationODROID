@@ -2,6 +2,7 @@
 
 main.cpp
 Written by Giovanni Sutanto (gsutanto@usc.edu or giovanni.sutanto@gmail.com), February 2014
+
 Special Thanks to Emil Valkov for his work on RaspberryPiCamera-OpenCV Libraries inside RaspiCamCV.h
 See Emil Valkov work at: https://robidouille.wordpress.com/2013/10/19/raspberry-pi-camera-with-opencv/
 
@@ -39,6 +40,7 @@ int main(int argc, const char** argv)
 	// Let's say we have 3D object point P, which is seen as 2D image point p on the image plane;
 	// the point p is related to point P by applying a rotation matrix R and a translation vector t to P.
 	// See the theoretical explanation here: http://docs.opencv.org/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
+
 	// Points:
 	vector<Point3f>	corner_object_points;			// 3D object points
 	vector<Point2f>	corner_image_points;			// 2D image points (on image plane)
@@ -49,22 +51,22 @@ int main(int argc, const char** argv)
 	Mat				my_camera_matrix, my_dist_coeffs;
 
 	bool			found;
-	
+
 	// Translation and Rotation Vectors:
 	Mat				tvec;							// translation vector
 	Mat				rvec;							// rotation vector (convertible to rotation matrix via Rodrigues transformation)
-	
+
 	// Overall Transformation Vector:
 	Mat				transfvec12;
 
 	// Images:
 	Mat				in_img;
-	
-	GetCamera();
 
+	GetCamera();
 	LoadCameraParams(GetDevice(), my_camera_matrix, my_dist_coeffs);
+
 	CalcBoardCornerPositions(corner_object_points);
-	
+
 	if (atoi(argv[2]))
 	{
 		// Create displaying window:
@@ -83,8 +85,9 @@ int main(int argc, const char** argv)
 		}
 
 		UndistortImage(in_img, my_camera_matrix, my_dist_coeffs);
+
 		found				= GetPose(in_img, transfvec12, rvec, tvec, corner_object_points, my_camera_matrix, my_dist_coeffs, atoi(argv[1]));
-		
+
 		if (atoi(argv[2]))
 		{
 			if (found)		// If done with success,
@@ -111,7 +114,7 @@ int main(int argc, const char** argv)
 		// Close displaying windows:
 		cvDestroyWindow("Result");
 	}
-	
+
 	ReleaseCamera();
 
 	return 0;
