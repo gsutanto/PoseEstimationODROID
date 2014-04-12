@@ -140,7 +140,8 @@ bool GetPose(Mat& undist_in_img, Mat& transfvec12, Mat& rvec, Mat& tvec, vector<
 		vconcat(transfmatCam, temp, transfmatCamHomogeneous);
 		Mat Rx					= RotationMatrix('x', -(PI/2));
 		Mat Ry					= RotationMatrix('y', (PI/2));
-		Mat T1					= TranslationMatrix(400.0, 700.0, 0.0);
+		// Camera Offset from SuperBot's End-Effector coordinate system's point of origin:
+		Mat T1					= TranslationMatrix(40.0, 70.0, 0.0);
 		transfmatSBHomogeneous	= T1 * Ry * Rx * transfmatCamHomogeneous;
 		transfmatSB				= transfmatSBHomogeneous(Rect(0, 0, 4, 3));
 		//cout<<"transfmatSB = "<<transfmatSB<<endl;
