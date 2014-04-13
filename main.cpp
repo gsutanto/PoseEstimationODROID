@@ -37,37 +37,22 @@ The 3D pose estimation steps are as follow:
 
 int main(int argc, const char** argv)
 {
-	// Let's say we have 3D object point P, which is seen as 2D image point p on the image plane;
-	// the point p is related to point P by applying a rotation matrix R and a translation vector t to P.
-	// See the theoretical explanation here: http://docs.opencv.org/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
-
-	// Points:
-	vector<Point3f>	corner_object_points;			// 3D object points
-	vector<Point2f>	corner_image_points;			// 2D image points (on image plane)
-
-	vector<Point3f>	coord_frame_object_points;		// 3D coordinate frame (origin, x-axis pointer, y-axis pointer, z-axis pointer) points
-	vector<Point2f>	coord_frame_image_points;		// 2D image points (on image plane)
-
-	Mat				my_camera_matrix, my_dist_coeffs;
-
-	bool			found;
-
-	// Translation and Rotation Vectors:
-	Mat				tvec;							// translation vector
-	Mat				rvec;							// rotation vector (convertible to rotation matrix via Rodrigues transformation)
-
 	// Overall Transformation Vector:
-	Mat				transfvec12;
+	Mat		transfvec12;
 
-	// Images:
-	Mat				in_img;
+	// Image Buffer:
+	Mat		img;
+
+	// Flags:
+	bool	print			= atoi(argv[1]);
+	bool	show_img		= atoi(argv[2]);
+
+	// target_found = 1 if target pattern is found, otherwise target_found = -1:
+	int		target_found;
 
 	GetCamera();
-	LoadCameraParams(GetDevice(), my_camera_matrix, my_dist_coeffs);
 
-	CalcBoardCornerPositions(corner_object_points);
-
-	if (atoi(argv[2]))
+	if (show_img)
 	{
 		// Create displaying window:
 		namedWindow("Result", CV_WINDOW_NORMAL);
@@ -75,27 +60,11 @@ int main(int argc, const char** argv)
 
 	while (true)
 	{
-		if (argc==4)
+		target_found	= FindTarget(transfvec12, img, print, show_img);
+
+		if (show_img)
 		{
-			in_img = imread(argv[3], CV_LOAD_IMAGE_COLOR);
-		}
-		else
-		{
-			in_img = GetImage();
-		}
-
-		UndistortImage(in_img, my_camera_matrix, my_dist_coeffs);
-
-		found				= GetPose(in_img, transfvec12, rvec, tvec, corner_object_points, my_camera_matrix, my_dist_coeffs, atoi(argv[1]));
-
-		if (atoi(argv[2]))
-		{
-			if (found)		// If done with success,
-			{
-				DrawObjCoordFrame(in_img, rvec, tvec, my_camera_matrix, my_dist_coeffs);
-			}
-
-			imshow("Result", in_img);
+			imshow("Result", img);
 		}
 
 		// Wait for 10 miliseconds until user press some key:
@@ -104,12 +73,12 @@ int main(int argc, const char** argv)
 		// If user press "ESC" key:
 		if (iKey == 27)
 		{
-			//imwrite("Result.jpg", in_img);
+			//imwrite("Result.jpg", img);
 			break;	// Break the infinite loop...
 		}
 	}
 
-	if (atoi(argv[2]))
+	if (show_img)
 	{
 		// Close displaying windows:
 		cvDestroyWindow("Result");

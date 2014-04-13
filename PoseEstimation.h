@@ -23,3 +23,4 @@ void CalcBoardCornerPositions(vector<Point3f>& corner_object_points, Size board_
 void UndistortImage(Mat& in_img, Mat camera_matrix, Mat dist_coeffs);
 bool GetPose(Mat& undist_in_img, Mat& transfvec12, Mat& rvec, Mat& tvec, vector<Point3f> corner_object_points/*(3D object points)*/, Mat camera_matrix, Mat dist_coeffs, bool print=true, Size board_size=Size(3, 4));
 void DrawObjCoordFrame(Mat& undist_in_img, Mat rvec, Mat tvec, Mat camera_matrix, Mat dist_coeffs);
+int FindTarget(Mat& transfvec12, Mat& img, bool print, bool show_img);

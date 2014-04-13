@@ -166,7 +166,7 @@ bool GetPose(Mat& undist_in_img, Mat& transfvec12, Mat& rvec, Mat& tvec, vector<
 													10.0e+20);
 	}
 	
-	if (print)
+	if ((found) && (print))
 	{
 		cout<<"transfvec12 = "<<transfvec12<<endl;
 		cout<<endl;
@@ -207,4 +207,57 @@ void DrawObjCoordFrame(Mat& undist_in_img, Mat rvec, Mat tvec, Mat camera_matrix
 	// Draw the projected Z-axis of the target plane (object)'s coordinate frame on image plane, on the output image:
 	line(undist_in_img, Point(coord_frame_image_points[0].x, coord_frame_image_points[0].y), Point(coord_frame_image_points[3].x, coord_frame_image_points[3].y), Scalar(255,0,0), 5, CV_AA);
 	putText(undist_in_img, "Z", Point(coord_frame_image_points[3].x, coord_frame_image_points[3].y), 1, 1, Scalar(255,0,0));
+}
+
+int FindTarget(Mat& transfvec12, Mat& img, bool print, bool show_img)
+{
+	// Let's say we have 3D object point P, which is seen as 2D image point p on the image plane;
+	// the point p is related to point P by applying a rotation matrix R and a translation vector t to P.
+	// See the theoretical explanation here: http://docs.opencv.org/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
+
+	// Points:
+	vector<Point3f>	corner_object_points;			// 3D object points
+	vector<Point2f>	corner_image_points;			// 2D image points (on image plane)
+
+	vector<Point3f>	coord_frame_object_points;		// 3D coordinate frame (origin, x-axis pointer, y-axis pointer, z-axis pointer) points
+	vector<Point2f>	coord_frame_image_points;		// 2D image points (on image plane)
+
+	Mat				my_camera_matrix, my_dist_coeffs;
+
+	bool			found;
+
+	// Translation and Rotation Vectors:
+	Mat				tvec;							// translation vector
+	Mat				rvec;							// rotation vector (convertible to rotation matrix via Rodrigues transformation)
+
+	LoadCameraParams(GetDevice(), my_camera_matrix, my_dist_coeffs);
+
+	CalcBoardCornerPositions(corner_object_points);
+
+	img = GetImage();
+	/*if (argc==4)
+	{
+		img = imread(argv[3], CV_LOAD_IMAGE_COLOR);
+	}*/
+	
+	UndistortImage(img, my_camera_matrix, my_dist_coeffs);
+
+	found			= GetPose(img, transfvec12, rvec, tvec, corner_object_points, my_camera_matrix, my_dist_coeffs, print);
+
+	if (show_img)
+	{
+		if (found)		// If done with success,
+		{
+			DrawObjCoordFrame(img, rvec, tvec, my_camera_matrix, my_dist_coeffs);
+		}
+	}
+
+	if (found)
+	{
+		return 1;
+	}
+	else
+	{
+		return -1;
+	}
 }
