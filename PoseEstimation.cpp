@@ -34,8 +34,22 @@ The 3D pose estimation steps are as follow:
 
 // TCP/IP Port to use: 50058
 
+void ConvertIntoHomogeneous(Mat& matrix)
+{
+	// Get Homogeneous (4X4) Matrix from Non-Homogeneous (3X3) Matrix:
+	hconcat(matrix, (Mat)(Mat_<double>(3,1) << 0.0, 0.0, 0.0), matrix);
+	vconcat(matrix, (Mat)(Mat_<double>(1,4) << 0.0, 0.0, 0.0, 1.0), matrix);
+}
+
+void ConvertIntoNonHomogeneous(Mat& matrix)
+{
+	// Get Non-Homogeneous (3X3) Matrix from Homogeneous (4X4) Matrix:
+	matrix	= matrix(Rect(0, 0, 3, 3));
+}
+
 Mat RotationMatrix(unsigned char axis, double angle)
 {
+	// Get Homogeneous (4X4) Rotation Matrix along specified axis, with specified angle:
 	if (axis == 'x')
 	{
 		return	(Mat_<double>(4,4) <<	1.0,			0.0,			0.0,			0.0,
@@ -61,6 +75,8 @@ Mat RotationMatrix(unsigned char axis, double angle)
 
 Mat TranslationMatrix(double tx, double ty, double tz)
 {
+	// Get Homogeneous (4X4) Translation Matrix, with specified tx (translation along x-axis),
+	// ty (translation along y-axis), and tz (translation along z-axis):
 	return	(Mat_<double>(4,4) <<	1.0,			0.0,			0.0,			tx,
 									0.0,			1.0,			0.0,			ty,
 									0.0,			0.0,			1.0,			tz,
@@ -125,6 +141,13 @@ bool GetPose(Mat& undist_in_img, Mat& transfvec12, Mat& rvec, Mat& tvec, vector<
 		// Compute Rotation Matrix (rmat, size 3-by-3 matrix) from Rotation Vector (rvec, size 3-by-1 matrix) using Rodrigues transform
 		// (http://docs.opencv.org/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html#rodrigues):
 		Rodrigues(rvec, rmat);
+		// Rotate Target Chessboard Coordinate System 180 degrees along x-axis (Roll-direction)
+		// (to align Target Chessboard Coordinate System with Camera Coordinate System):
+		ConvertIntoHomogeneous(rmat);
+		rmat					= rmat * RotationMatrix('x', PI);
+		ConvertIntoNonHomogeneous(rmat);
+		// Update the Rotation Vector (rvec) after the change above:
+		Rodrigues(rmat, rvec);
 		if (print)
 		{
 			cout<<"rvec = "<<rvec<<endl;

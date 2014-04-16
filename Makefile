@@ -16,7 +16,7 @@ ifeq ($(BUILD_TYPE), release)
 	CFLAGS = $(CFLAGS_COMMON) -O2
 endif
 
-LDFLAGS = $(LDFLAGS_OPENCV) -lX11 -lXext -lrt -lstdc++
+LDFLAGS = $(LDFLAGS_OPENCV) -lX11 -lXext -lrt -lstdc++ -lm
 
 TARGETS = libpose_estimation.a main
 

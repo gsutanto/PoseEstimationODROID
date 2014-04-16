@@ -1,4 +1,8 @@
-to run the program:
+to test camera as it is:
+
+% cheese
+
+to run the program in this directory:
 
 % ./main 1 1 [image_file]
 
