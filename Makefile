@@ -1,6 +1,6 @@
 CFLAGS_OPENCV = \
-		-I/usr/include \
-		-I/usr/include/opencv \
+		-I/usr/local/include \
+		-I/usr/local/include/opencv \
 
 LDFLAGS_OPENCV = -lopencv_highgui -lopencv_core -lopencv_legacy -lopencv_video -lopencv_features2d -lopencv_calib3d -lopencv_imgproc
 
